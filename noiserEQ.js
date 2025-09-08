@@ -1,10 +1,9 @@
-let audioCtx, noiseNode, gainNode;
-let currentPreset = localStorage.getItem("preset") || "radio";
+let audioCtx, noiseNode, gainNode, filter, lfo, lfoGain;
 let savedVolume = localStorage.getItem("volume") || 0.3;
 
 document.getElementById("volume").value = savedVolume;
 
-function createNoise(type = "radio") {
+function createRadioNoise() {
   if (audioCtx) audioCtx.close();
 
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -12,16 +11,17 @@ function createNoise(type = "radio") {
   const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
   const output = buffer.getChannelData(0);
 
+  // --- ホワイトノイズ生成 ---
   for (let i = 0; i < bufferSize; i++) {
-    if (type === "radio") {
-      output[i] = (Math.random() * 2 - 1) * 0.6; // ラジカセ風ノイズ
-    } else if (type === "cafe") {
-      output[i] = (Math.random() * 2 - 1) * 0.3 + Math.sin(i / 50) * 0.02; // カフェ雑音風
+    // サンプルレートを落とす（音質を荒く）
+    if (i % 2 === 0) {
+      output[i] = (Math.random() * 2 - 1) * 0.6;
     } else {
-      output[i] = Math.random() * 2 - 1; // ホワイトノイズ
+      output[i] = output[i - 1];
     }
   }
 
+  // --- ノード設定 ---
   noiseNode = audioCtx.createBufferSource();
   noiseNode.buffer = buffer;
   noiseNode.loop = true;
@@ -29,12 +29,34 @@ function createNoise(type = "radio") {
   gainNode = audioCtx.createGain();
   gainNode.gain.value = savedVolume;
 
-  noiseNode.connect(gainNode).connect(audioCtx.destination);
+  // --- バンドパスフィルターでラジオっぽく ---
+  filter = audioCtx.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.value = 2000; // 中音域を強調
+  filter.Q.value = 1.5;
+
+  // --- AM変調でガサガサ感 ---
+  lfo = audioCtx.createOscillator();
+  lfo.frequency.value = 6; // 6Hzの揺れ
+  lfoGain = audioCtx.createGain();
+  lfoGain.gain.value = 0.5;
+  lfo.connect(lfoGain).connect(gainNode.gain);
+  lfo.start();
+
+  // --- 電波の不安定さ（音量ランダム揺れ） ---
+  setInterval(() => {
+    if (gainNode) {
+      gainNode.gain.value = savedVolume * (0.7 + Math.random() * 0.6);
+    }
+  }, 300);
+
+  // --- 接続 ---
+  noiseNode.connect(filter).connect(gainNode).connect(audioCtx.destination);
 }
 
 document.getElementById("playBtn").onclick = () => {
   if (!audioCtx || audioCtx.state === "closed") {
-    createNoise(currentPreset);
+    createRadioNoise();
     noiseNode.start();
   }
 };
@@ -46,17 +68,6 @@ document.getElementById("stopBtn").onclick = () => {
 
 document.getElementById("volume").oninput = (e) => {
   if (gainNode) gainNode.gain.value = e.target.value;
+  savedVolume = e.target.value;
   localStorage.setItem("volume", e.target.value);
 };
-
-document.querySelectorAll(".preset").forEach(btn => {
-  btn.onclick = () => {
-    currentPreset = btn.dataset.type;
-    localStorage.setItem("preset", currentPreset);
-    if (audioCtx && audioCtx.state !== "closed") {
-      noiseNode.stop();
-      createNoise(currentPreset);
-      noiseNode.start();
-    }
-  };
-});
