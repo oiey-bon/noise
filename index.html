@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ノイズ発生機</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>ノイズ発生機</h1>
+  <p>リスニング対策のラジカセ風ノイズ</p>
+
+  <div class="controls">
+    <button id="playBtn">▶ 再生</button>
+    <button id="stopBtn">■ 停止</button>
+  </div>
+
+  <div class="sliders">
+    <label>音量:
+      <input type="range" id="volume" min="0" max="1" step="0.01" value="0.3">
+    </label>
+  </div>
+
+  <div class="presets">
+    <h2>プリセット</h2>
+    <button class="preset" data-type="radio">📻 ラジカセ風</button>
+    <button class="preset" data-type="cafe">☕ カフェ雑音</button>
+    <button class="preset" data-type="white">🌫 ホワイトノイズ</button>
+  </div>
+
+  <script src="noiserEQ.js"></script>
+</body>
+</html>
